@@ -1,4 +1,5 @@
 const Mongoose = require("mongoose");
+const deepPopulate = require("mongoose-deep-populate")(Mongoose);
 
 const UserSchema = Mongoose.Schema({
   name: String,
@@ -9,5 +10,7 @@ const UserSchema = Mongoose.Schema({
     },
   ],
 });
+
+UserSchema.plugin(deepPopulate);
 
 module.exports = Mongoose.model("UserTest", UserSchema);

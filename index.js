@@ -5,6 +5,8 @@ const { router } = require("./router");
 const cors = require("cors");
 const { addUser, getUser } = require("./Users");
 
+const myurl = "10.14.6.81:5000";
+
 const PORT = process.env.PORT || 5000;
 
 const app = express();
@@ -22,26 +24,27 @@ const io = socketio(server, {
 io.on("connection", (socket) => {
   //Event for new user joining chat
   socket.on("join", (data, callback) => {
-    let { name, room } = data;
-    let { error, user } = addUser({ id: socket.id, name, room });
+    let { userId, chatroomId } = data;
+    //  let { error, user } = addUser({ id: socket.id, userId, chatRoomId });
 
-    if (error) {
-      return callback(error);
-    }
+    // if (error) {
+    //   return callback(error);
+    // }
+    console.log(userId + "  " + chatroomId);
 
     // Welcoming the user.
-    socket.emit("message", {
-      user: "admin",
-      text: `${user.name} welcome to the room ${user.room}`,
-    });
+    // socket.emit("message", {
+    //   user: "admin",
+    //   text: `${userId} welcome to the room ${chatroomId}`,
+    // });
 
     // Telling others that the a new person has joined the chat.
-    socket.broadcast.to(user.room).emit("message", {
-      user: "admin",
-      text: `${user.name} has joined the chat`,
-    });
+    // socket.broadcast.to(user.room).emit("message", {
+    //   user: "admin",
+    //   text: `${user.name} has joined the chat`,
+    // });
 
-    socket.join(user.room);
+    socket.join(chatroomId);
     callback();
   });
 

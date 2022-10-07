@@ -2,6 +2,7 @@ const express = require("express");
 const User = require("./models/User");
 const { Message } = require("./models/Message");
 const Chatroom = require("./models/Chatroom");
+const { findByIdAndUpdate } = require("./models/User");
 const router = express.Router();
 
 router.get("/", (req, res) => {
@@ -35,27 +36,58 @@ router.post("/user/create", (req, res) => {
 
 //Create chatroom
 router.post("/chatroom/create", (req, res) => {
-  let { chatName } = req.body;
-
-  let chatroom = new Chatroom();
-  chatroom.chatName = chatName;
-  chatroom.save((err) => {
+  let { participants, chatName } = req.body;
+  participants = participants.sort();
+  // Validation is Required
+  Chatroom.find({ participants: participants }, (err, chatroom) => {
     if (!err) {
-      res.json({
-        success: true,
-        chatroom,
-      });
+      if (chatroom.length > 0) {
+        res.json({
+          success: false,
+          message: "Could not create new chat",
+        });
+      } else {
+        let chatroom = new Chatroom();
+        chatroom.chatName = chatName;
+        chatroom.participants = participants;
+        chatroom.save((err) => {
+          if (!err) {
+            participants.forEach((element) => {
+              User.findOne(
+                {
+                  _id: element,
+                },
+                (err, user) => {
+                  if (!err) {
+                    user.chatrooms = [...user.chatrooms, chatroom._id];
+                    user.save();
+                  } else {
+                    res.json({ success: false });
+                  }
+                }
+              );
+            });
+
+            res.json({ success: true, chatroom });
+          } else {
+            res.json({
+              success: false,
+              err,
+            });
+          }
+        });
+      }
     } else {
       res.json({
         success: false,
-        err,
+        message: "Something went wrong",
       });
     }
   });
 });
 
 //Join chatroom
-router.put("/chatroom/join", (req, res) => {
+router.post("/chatroom/join", (req, res) => {
   let { userId, chatroomId } = req.body;
   let tempUser;
   console.log(userId, chatroomId);
@@ -227,33 +259,16 @@ router.post("/message/send", (req, res) => {
 
   // res.send("ok");
 });
-exports.router = router;
 
-//   Chatroom.findOne({ _id: chatroomId }, (err, chatroom) => {
-//     if (!err) {
-//       console.log(newmessage._id);
-//       if (chatroom.messages.includes(newmessage._id)) {
-//         res.json({
-//           success: false,
-//           message: "Already in the requested chat",
-//         });
-//       } else {
-//         chatroom.messages = [...chatroom.messages, newmessage._id];
-//         chatroom.save((err) => {
-//           if (!err) {
-//             res.json({
-//               success: true,
-//               message: newmessage,
-//               chatroom,
-//             });
-//           } else {
-//             res.json({
-//               success: false,
-//             });
-//           }
-//         });
-//       }
-//     } else {
-//       res.json({ success: false });
-//     }
-//   });
+//Chat all chatrooms for a user
+router.get("/get-chatroom-user", (req, res) => {
+  let { userId } = req.body;
+
+  User.findById(userId)
+    .deepPopulate("chatrooms.participants")
+    .exec((err, user) => {
+      res.send(user);
+    });
+});
+
+exports.router = router;
