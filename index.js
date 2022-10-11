@@ -1,13 +1,12 @@
 const express = require("express");
 const socketio = require("socket.io");
 const http = require("http");
-const {
-  getMessages,
-  saveMessage,
-} = require("./Utilites/MessageManagment/Message");
 const { router } = require("./router");
 const cors = require("cors");
-const { addUser, getUser } = require("./Users");
+const {
+  saveMessage,
+  getMessages,
+} = require("./Utilites/MessageManagment/Message");
 
 const myurl = "10.14.6.81:5000";
 
@@ -29,12 +28,15 @@ io.on("connection", (socket) => {
   //Event for new user joining chat
   socket.on("join", (data, callback) => {
     let { userId, chatroomId } = data;
+
+    console.log(userId + "  " + chatroomId);
+    socket.join(chatroomId);
+    callback();
     //  let { error, user } = addUser({ id: socket.id, userId, chatRoomId });
 
     // if (error) {
     //   return callback(error);
     // }
-    console.log(userId + "  " + chatroomId);
 
     // Welcoming the user.
     // socket.emit("message", {
@@ -47,18 +49,28 @@ io.on("connection", (socket) => {
     //   user: "admin",
     //   text: `${user.name} has joined the chat`,
     // });
-
-    socket.join(chatroomId);
-    callback();
   });
 
   //Event for sending a message
-  socket.on("sendMessage", (message, callback) => {
-    const user = getUser(socket.id);
+  socket.on("sendMessage", (data, callback) => {
+    // const user = getUser(socket.id);
+    let { userId, chatroomId, message } = data;
+    saveMessage(chatroomId, userId, message)
+      .then((data) => {
+        io.to(chatroomId).emit("broadcastMessage", {
+          userId,
+          message,
+        });
+        callback(data);
+      })
 
-    io.to(user.room).emit("message", { user: user.name, text: message });
-    callback();
-    console.log("From client", message);
+      .catch((e) => {
+        callback({ success: false, message: "Saving Failed" });
+      });
+
+    // io.to(user.room).emit("message", { user: user.name, text: message });
+    // callback();
+    // console.log("From client", message);
   });
 
   socket.on("disconnect", () => {
